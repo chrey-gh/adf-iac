@@ -1,0 +1,79 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "tenantid": {
+           "type": "string",
+           "metadata": {
+                "description": "description"
+            }
+        },
+        "objectid": {
+           "type": "string",
+           "metadata": {
+                "description": "description"
+            }
+        },
+        "keyVaultName": {
+           "type": "string",
+           "metadata": {
+                "description": "description"
+            },
+            "defaultValue": "yazaki-kv"
+        },
+        "oidKVSecurityTeam": {
+           "type": "string",
+           "metadata": {
+                "description": "oid for kv security team group "
+            },
+            "defaultValue": "<oid of sec group>"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.KeyVault/vaults",
+            "name": "[parameters('keyVaultName')]",
+            "apiVersion": "2018-02-14",
+            "location": "[resourceGroup().location]",
+            "tags": {
+                "project": "yazaki adf",
+                "contact": "chrey@microsoft.com"
+            },
+            "properties": {
+                "enabledForDeployment": true,
+                "enabledForTemplateDeployment": true,
+                "enabledForDiskEncryption": true,
+                "tenantId": "[parameters('tenantId')]",
+                "accessPolicies": [
+                    {
+                        "objectId": "[parameters('objectId')]",
+                        "tenantId": "[parameters('tenantId')]",
+                        "permissions": {
+                             "secrets": ["all"]      
+                        }
+                    },
+                    {
+                        "objectId": "[parameters('oidKVSecurityTeam')]",
+                        "tenantId": "[parameters('tenantid')]",
+                        "permissions":{
+                            "keys" : ["all"],
+                            "secrets": ["all"]
+                        }
+                    }
+                ],
+                "sku": {
+                    "name": "standard",
+                    "family": "A"
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "okeyVault": {
+           "type": "object",
+           "value": "[reference(parameters('keyVaultName'), '2018-02-14', 'Full')]"
+        }
+    },
+    "functions": []
+}

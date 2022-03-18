@@ -1,0 +1,296 @@
+name: adf-yazaki
+
+trigger:
+  branches:
+    include:
+    - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  objectid: (no oid yet)
+  tenantid: <guid of tenant>
+  subscriptionid: <guid of subscription>
+  oidKVSecurityTeam: <guid of security group to manage secrets>
+  justToDev: true
+
+stages:
+- stage: deployToSandbox
+  displayName: Deploy to SandBox
+  variables:
+    env: sbx
+
+  jobs:
+  - job: sbxDeployJob
+
+    steps:
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: 'Create the resourcegroup'
+      inputs:
+        deploymentScope: 'Subscription'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createrg-deploy.json'
+        overrideParameters: '-resourceGroupName $(env)-yazaki-rg'
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Adf-Yazaki-RG
+      
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: 'Create Data Factory'
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(env)-yazaki-rg'
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createadf-deploy.json'
+        overrideParameters: '-adfName $(env)-yazaki-adf' 
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Adf-Yazaki-ADF
+        deploymentOutputs: atOutputVar
+
+    - powershell: write-host (convertfrom-json $env:ATOUTPUTVAR).adfMsi.value
+      name: printObjectId
+    - powershell: |
+          $oid = (convertfrom-json $env:ATOUTPUTVAR).adfMsi.value
+          write-host "##vso[task.setvariable variable=objectid]$oid"
+      name: setObjectIdStep
+      displayName: Set tenantid and objectid
+
+
+    - pwsh: write-host $(objectid)
+      displayName: output objectid
+
+    - pwsh: write-host $(TENANTID)
+      displayName: write tenantid
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: deploy key vault
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(env)-yazaki-rg'
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createkv-deploy.json'
+        overrideParameters: '-tenantid $(tenantid) -objectid $(objectid) -keyVaultName $(env)-yazaki-kv -oidKVSecurityTeam $(oidKVSecurityTeam)'
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Adf-Yazaki-KV
+
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: deploy storage account
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(env)-yazaki-rg'
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createdlg2-deploy.json'
+        overrideParameters: '-storageAccountName $(env)yazakiadfsto'
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Adf-Yazaki-STO
+
+
+- stage: testing
+  displayName: Test Stage
+  jobs:
+  - job: tester
+    steps:
+
+    - task: AzurePowerShell@5
+      displayName: 'Run pester tests'
+      inputs:
+        azureSubscription: 'AzureRC'
+        ScriptType: 'FilePath'
+        ScriptPath: 'invokethepester.ps1'
+        azurePowerShellVersion: 'LatestVersion'
+
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'NUnit'
+        testResultsFiles: '**/TEST-*.xml'
+
+- stage: deploytodevstage
+  displayName: Deploy to Dev
+  variables:
+    env: dev
+  jobs:
+  - job: devDeployJob
+
+    steps:
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: 'Create the resourcegroup'
+      inputs:
+        deploymentScope: 'Subscription'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createrg-deploy.json'
+        overrideParameters: '-resourceGroupName $(env)-yazaki-rg'
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Adf-Yazaki-RG
+
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: 'Create Data Factory'
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(env)-yazaki-rg'
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createadfwogit-deploy.json'
+        overrideParameters: '-adfName $(env)-yazaki-adf'
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Adf-Yazaki-ADF
+        deploymentOutputs: atOutputVar
+
+    - powershell: write-host (convertfrom-json $env:ATOUTPUTVAR).adfMsi.value
+      name: printObjectId
+    - powershell: |
+          $oid = (convertfrom-json $env:ATOUTPUTVAR).adfMsi.value
+          write-host "##vso[task.setvariable variable=objectid]$oid"
+      name: setObjectIdStep
+      displayName: Set tenantid and objectid
+
+
+    - pwsh: write-host $(objectid)
+      displayName: output objectid
+
+    - pwsh: write-host $(TENANTID)
+      displayName: write tenantid
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: deploy key vault
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(env)-yazaki-rg'
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createkv-deploy.json'
+        overrideParameters: '-tenantid $(tenantid) -objectid $(objectid) -keyVaultName $(env)-yazaki-kv -oidKVSecurityTeam $(oidKVSecurityTeam)'
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Yazaki-KV
+
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: deploy storage account
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(env)-yazaki-rg'
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createdlg2-deploy.json'
+        overrideParameters: '-storageAccountName $(env)yazakiadfsto'
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Yazaki-STO
+
+
+
+- stage: deploytoprodstage
+  
+  displayName: Deploy to Prod
+  variables:
+    env: prod
+  jobs:
+  - job: prodDeployJob
+    condition: and(succeeded(), eq('${{ variables.justToDev }}', false))
+    steps:
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: 'Create the resourcegroup'
+      inputs:
+        deploymentScope: 'Subscription'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createrg-deploy.json'
+        overrideParameters: '-resourceGroupName $(env)-yazaki-rg'
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Adf-Yazaki-RG
+
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: 'Create Data Factory'
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(env)-yazaki-rg'
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createadfwogit-deploy.json'
+        overrideParameters: '-adfName $(env)-yazaki-adf'
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Adf-Yazaki-ADF
+        deploymentOutputs: atOutputVar
+
+    - powershell: write-host (convertfrom-json $env:ATOUTPUTVAR).adfMsi.value
+      name: printObjectId
+    - powershell: |
+          $oid = (convertfrom-json $env:ATOUTPUTVAR).adfMsi.value
+          write-host "##vso[task.setvariable variable=objectid]$oid"
+      name: setObjectIdStep
+      displayName: Set tenantid and objectid
+
+
+    - pwsh: write-host $(objectid)
+      displayName: output objectid
+
+    - pwsh: write-host $(TENANTID)
+      displayName: write tenantid
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: deploy key vault
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(env)-yazaki-rg'
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createkv-deploy.json'
+        overrideParameters: '-tenantid $(tenantid) -objectid $(objectid) -keyVaultName $(env)-yazaki-kv -oidKVSecurityTeam $(oidKVSecurityTeam)'
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Yazaki-KV
+
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: deploy storage account
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: 'AzureRC'
+        subscriptionId: $(subscriptionid)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(env)-yazaki-rg'
+        location: 'West US 2'
+        templateLocation: 'Linked artifact'
+        csmFile: 'IaC/createdlg2-deploy.json'
+        overrideParameters: '-storageAccountName $(env)yazakiadfsto'
+        deploymentMode: 'Incremental'
+        deploymentName: $(env)-Yazaki-STO

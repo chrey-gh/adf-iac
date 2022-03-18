@@ -1,0 +1,5 @@
+install-module -Name Pester -Force
+
+$outputFile = ".\TEST-RESULTS.xml"
+
+invoke-pester -OutputFile $outputFile -OutputFormat NUnitXml

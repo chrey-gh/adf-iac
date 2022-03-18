@@ -1,0 +1,25 @@
+
+Describe 'Checks for ADF' {
+
+    BeforeAll {
+        $d = Get-AzResourceGroupDeployment -Name Adf-Yazaki-ADF -ResourceGroupName adf-yazaki-rg
+
+        $rgname = $d.Outputs.adfName.Value
+        $succeeded = $d.Outputs.adfSucceeded.Value
+
+    }
+
+    Context "ADF" {
+
+
+        It "factory name is yazaki-adf" {
+            [string]$rgname | Should Be "yazaki-adf"
+        }
+
+        It "ADF deployment is succeeded" {
+            [string]$succeeded | Should Be "Succeeded"
+        }
+
+    }
+
+}

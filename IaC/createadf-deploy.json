@@ -1,0 +1,70 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "adfName": {
+           "type": "string",
+           "metadata": {
+                "description": "description"
+            },
+            "defaultValue" : "yazaki-adf"
+        },
+        "location": {
+           "type": "string",
+           "metadata": {
+                "description": "description"
+            },
+            "defaultValue":"westus2"
+        }
+    },
+    "variables": {},
+    "resources": [
+
+        {
+        
+        "name": "[parameters('adfName')]",
+        "type": "Microsoft.DataFactory/factories",
+        "apiVersion": "2018-06-01",
+        "location": "[parameters('location')]",
+        "tags": {
+            "project" : "adf-yazaki",
+            "contact" : "chrey@microsoft.com"
+        },
+        "identity": {
+            "type": "SystemAssigned"
+        },
+        "properties": {
+            "repoConfiguration": {
+                "accountName": "chrey0537",
+                "projectName": "Cases",
+                "repositoryName": "adf-yazaki-content",
+                "collaborationBranch": "master",
+                "rootFolder": "/",
+                "lastCommitId": "string",
+                "type": "FactoryVSTSConfiguration"
+            }
+ 
+        },
+        "resources": []
+        }
+    ],
+    "outputs": {
+        "AdfSucceeded": {
+           "type": "string",
+           "value": "[reference(parameters('adfName')).provisioningState]"
+        },
+        "AdfName": {
+           "type": "string",
+           "value": "[parameters('adfName')]"
+        },
+        "AdfMsi": {
+           "type": "string",
+           "value": "[reference(resourceId('Microsoft.DataFactory/factories', parameters('adfName')),'2018-06-01', 'Full').identity.principalId]"
+        },
+        "TenantId": {
+           "type": "string",
+           "value": "[reference(resourceId('Microsoft.DataFactory/factories', parameters('adfName')),'2018-06-01', 'Full').identity.tenantId]"
+        }
+    },
+    "functions": []
+}

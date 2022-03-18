@@ -1,0 +1,61 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "adfName": {
+           "type": "string",
+           "metadata": {
+                "description": "description"
+            },
+            "defaultValue" : "yazaki-adf"
+        },
+        "location": {
+           "type": "string",
+           "metadata": {
+                "description": "description"
+            },
+            "defaultValue":"westus2"
+        }
+    },
+    "variables": {},
+    "resources": [
+
+        {
+        
+        "name": "[parameters('adfName')]",
+        "type": "Microsoft.DataFactory/factories",
+        "apiVersion": "2018-06-01",
+        "location": "[parameters('location')]",
+        "tags": {
+            "project" : "adf-yazaki",
+            "contact" : "email"
+        },
+        "identity": {
+            "type": "SystemAssigned"
+        },
+        "properties": {
+            
+        },
+        "resources": []
+        }
+    ],
+    "outputs": {
+        "AdfSucceeded": {
+           "type": "string",
+           "value": "[reference(parameters('adfName')).provisioningState]"
+        },
+        "AdfName": {
+           "type": "string",
+           "value": "[parameters('adfName')]"
+        },
+        "AdfMsi": {
+           "type": "string",
+           "value": "[reference(resourceId('Microsoft.DataFactory/factories', parameters('adfName')),'2018-06-01', 'Full').identity.principalId]"
+        },
+        "TenantId": {
+           "type": "string",
+           "value": "[reference(resourceId('Microsoft.DataFactory/factories', parameters('adfName')),'2018-06-01', 'Full').identity.tenantId]"
+        }
+    },
+    "functions": []
+}

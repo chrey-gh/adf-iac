@@ -1,0 +1,19 @@
+$resourceGroupNames = (
+    "sbx-yazaki-rg",
+    "dev-yazaki-rg",
+    "prod-yazaki-rg"
+)
+
+$location = 'westus2'
+
+foreach($rgn in $resourceGroupNames)
+{
+
+    $tempRg = Get-AzResourceGroup  -Name $rgn -Location $location -ErrorAction SilentlyContinue
+    if($null -eq $tempRg)
+    {
+        continue
+    }
+    write-host 'deleting resource group $(tempRg.ResourceGroupName)'
+    Remove-AzResourceGroup -Name $tempRg.ResourceGroupName  -Force
+}

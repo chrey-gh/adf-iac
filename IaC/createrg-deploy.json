@@ -1,0 +1,48 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "Location": {
+           "type": "string",
+           "defaultValue": "westus2",
+           "metadata": {
+                "description": "deployment location"
+            }
+        },
+        "resourceGroupName": {
+           "type": "string",
+           "defaultValue": "adf-yazaki-rg",
+           "metadata": {
+                "description": "Name of resourcegroup"
+            }
+        }
+    },
+    "variables": {
+       
+    },
+    "resources": [
+        {
+            "type":"Microsoft.Resources/resourceGroups",
+            "location": "[parameters('Location')]",
+            "name": "[parameters('resourceGroupName')]",
+            "apiVersion": "2018-05-01",
+             "tags": {
+                "project": "ADF-Yazaki",
+                "contact": "email"
+             },
+            "properties": {}
+            
+        }
+    ],
+    "outputs": {
+        "ResourceGroup": {
+           "type": "string",
+           "value": "[reference(parameters('resourceGroupName')).provisioningState]"
+        },
+        "ResourceGroupName": {
+           "type": "string",
+           "value": "[parameters('resourceGroupName')]"
+        }
+    },
+    "functions": []
+}

@@ -1,0 +1,22 @@
+
+Describe 'Checks' {
+
+    BeforeAll {
+        $deployment = (Get-AzDeployment -Name Adf-Yazaki-RG)
+
+        $rgname = $deployment.Outputs.resourceGroupName.Value
+        $succeeded = $deployment.Outputs.resourceGroup.Value
+    }
+
+    Context "ResourceGroup" {
+        It "Resourcegroupname is adf-yazaki-rg" {
+            [string]$rgname | Should Be "adf-yazaki-rg"
+        }
+
+        It "Resourcegroupdeployment succeeded" {
+            [string]$succeeded | Should Be "Succeeded"
+        }
+
+    }
+
+}
